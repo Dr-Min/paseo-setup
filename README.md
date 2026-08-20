@@ -15,8 +15,13 @@ git clone https://github.com/Dr-Min/paseo-setup.git; cd paseo-setup
 .\install.ps1
 ```
 
-라우팅 규칙은 즉시 적용된다. `appendSystemPrompt`만 **Paseo 앱 재시작**이 필요하다
-(재시작 시 돌고 있는 에이전트 전부 종료 주의).
+설치 스크립트가 마지막에 `paseo daemon reload` 까지 돌려서 바로 적용한다.
+**데몬을 재시작하지 않으므로 돌고 있는 에이전트가 죽지 않는다.**
+
+- 라우팅 규칙(`~/.claude/rules`, `~/.codex/AGENTS.md`)은 파일에서 바로 읽히므로 reload 도 필요 없다.
+- `appendSystemPrompt` 만 데몬에 반영이 필요하고, 그게 `paseo daemon reload` 다.
+- CLI 가 없으면 앱 실행 후 직접 `paseo daemon reload` 를 돌리면 된다.
+  `paseo daemon restart` 나 앱 재시작도 되지만 그 경우 에이전트가 전부 종료된다.
 
 ## 들어있는 것
 

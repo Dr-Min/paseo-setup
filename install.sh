@@ -13,7 +13,7 @@ command -v python3 >/dev/null 2>&1 || { echo "오류: python3 가 필요합니�
 # 1. Claude 전역 규칙 (전용 파일이므로 통째로 교체)
 mkdir -p "$HOME/.claude/rules"
 cp "$src" "$HOME/.claude/rules/paseo-models.md"
-echo "[1/3] Claude 전역 규칙 -> ~/.claude/rules/paseo-models.md"
+echo "[1/4] Claude 전역 규칙 -> ~/.claude/rules/paseo-models.md"
 
 # 2. Codex 전역 규칙
 #    ~/.codex/AGENTS.md 는 사용자의 다른 지침이 들어있을 수 있는 공용 파일이다.
@@ -39,7 +39,7 @@ else:
 io.open(target, "w", encoding="utf-8").write(new)
 print("      %s" % how)
 PY
-echo "[2/3] Codex 전역 규칙 -> ~/.codex/AGENTS.md"
+echo "[2/4] Codex 전역 규칙 -> ~/.codex/AGENTS.md"
 
 # 3. Paseo appendSystemPrompt 패치 (프로바이더 불문 모든 에이전트에 주입)
 cfg="$HOME/.paseo/config.json"
@@ -56,16 +56,27 @@ with io.open(cfg_path, "w", encoding="utf-8") as f:
     f.write("\n")
 print("      appendSystemPrompt %d자 주입" % len(prompt))
 PY
-  echo "[3/3] Paseo config 패치 완료 (백업: $cfg.bak-$stamp)"
+  echo "[3/4] Paseo config 패치 완료 (백업: $cfg.bak-$stamp)"
 else
-  echo "[3/3] ~/.paseo/config.json 이 없습니다"
+  echo "[3/4] ~/.paseo/config.json 이 없습니다"
   echo "      Paseo 앱을 한 번 실행한 뒤 이 스크립트를 다시 돌리세요 (1·2단계는 이미 끝났습니다)"
+fi
+
+# 4. 데몬에 설정 반영 (재시작이 아니라 reload — 돌고 있는 에이전트를 죽이지 않는다)
+if command -v paseo >/dev/null 2>&1; then
+  if paseo daemon reload >/dev/null 2>&1; then
+    echo "[4/4] 데몬 설정 reload 완료 (에이전트 유지)"
+  else
+    echo "[4/4] reload 실패 - 데몬이 꺼져 있을 수 있습니다. 앱 실행 후 'paseo daemon reload'"
+  fi
+else
+  echo "[4/4] paseo CLI 없음 - 앱 실행 후 'paseo daemon reload' 를 직접 돌리세요"
 fi
 
 cat <<'EOF'
 
 완료.
-- 라우팅 규칙(~/.claude/rules, ~/.codex/AGENTS.md)은 즉시 적용됩니다.
-- appendSystemPrompt는 Paseo 앱(데몬)을 재시작해야 적용됩니다.
-  주의: 재시작하면 돌고 있는 에이전트가 전부 종료됩니다.
+- 라우팅 규칙(~/.claude/rules, ~/.codex/AGENTS.md)은 파일에서 바로 읽히므로 즉시 적용됩니다.
+- appendSystemPrompt 는 `paseo daemon reload` 로 적용됩니다. 에이전트는 죽지 않습니다.
+  (앱 재시작이나 `paseo daemon restart` 도 되지만, 그 경우 돌고 있는 에이전트가 전부 종료됩니다)
 EOF
