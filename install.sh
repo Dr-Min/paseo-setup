@@ -8,19 +8,37 @@ stamp="$(date +%Y%m%d-%H%M%S)"
 src="$repo/rules/model-routing.md"
 
 [ -f "$src" ] || { echo "오류: $src 가 없습니다"; exit 1; }
+command -v python3 >/dev/null 2>&1 || { echo "오류: python3 가 필요합니다"; exit 1; }
 
-# 1. Claude 전역 규칙
+# 1. Claude 전역 규칙 (전용 파일이므로 통째로 교체)
 mkdir -p "$HOME/.claude/rules"
 cp "$src" "$HOME/.claude/rules/paseo-models.md"
 echo "[1/3] Claude 전역 규칙 -> ~/.claude/rules/paseo-models.md"
 
-# 2. Codex 전역 규칙 (같은 원본. 기존 파일은 백업 후 교체)
+# 2. Codex 전역 규칙
+#    ~/.codex/AGENTS.md 는 사용자의 다른 지침이 들어있을 수 있는 공용 파일이다.
+#    기존 내용은 그대로 두고 마커 블록만 추가/갱신한다.
 mkdir -p "$HOME/.codex"
-if [ -f "$HOME/.codex/AGENTS.md" ]; then
-  cp -p "$HOME/.codex/AGENTS.md" "$HOME/.codex/AGENTS.md.bak-$stamp"
-  echo "      기존 AGENTS.md 백업 -> ~/.codex/AGENTS.md.bak-$stamp"
-fi
-cp "$src" "$HOME/.codex/AGENTS.md"
+agents="$HOME/.codex/AGENTS.md"
+[ -f "$agents" ] && cp -p "$agents" "$agents.bak-$stamp"
+python3 - "$agents" "$src" <<'PY'
+import io, os, sys
+target, source = sys.argv[1], sys.argv[2]
+START, END = "<!-- paseo-setup:start -->", "<!-- paseo-setup:end -->"
+body = io.open(source, encoding="utf-8").read().strip()
+block = "%s\n%s\n%s" % (START, body, END)
+old = io.open(target, encoding="utf-8").read() if os.path.exists(target) else ""
+if START in old and END in old:
+    head, rest = old.split(START, 1)
+    tail = rest.split(END, 1)[1]
+    new, how = head + block + tail, "기존 블록 갱신"
+elif old.strip():
+    new, how = old.rstrip() + "\n\n" + block + "\n", "기존 내용 유지하고 블록 추가"
+else:
+    new, how = block + "\n", "신규 생성"
+io.open(target, "w", encoding="utf-8").write(new)
+print("      %s" % how)
+PY
 echo "[2/3] Codex 전역 규칙 -> ~/.codex/AGENTS.md"
 
 # 3. Paseo appendSystemPrompt 패치 (프로바이더 불문 모든 에이전트에 주입)
@@ -30,10 +48,8 @@ if [ -f "$cfg" ]; then
   python3 - "$cfg" "$repo/paseo/append-system-prompt.txt" <<'PY'
 import io, json, sys
 cfg_path, prompt_path = sys.argv[1], sys.argv[2]
-with io.open(prompt_path, encoding="utf-8") as f:
-    prompt = f.read().strip()
-with io.open(cfg_path, encoding="utf-8") as f:
-    cfg = json.load(f)
+prompt = io.open(prompt_path, encoding="utf-8").read().strip()
+cfg = json.load(io.open(cfg_path, encoding="utf-8"))
 cfg.setdefault("daemon", {})["appendSystemPrompt"] = prompt
 with io.open(cfg_path, "w", encoding="utf-8") as f:
     json.dump(cfg, f, ensure_ascii=False, indent=2)
@@ -42,7 +58,8 @@ print("      appendSystemPrompt %d자 주입" % len(prompt))
 PY
   echo "[3/3] Paseo config 패치 완료 (백업: $cfg.bak-$stamp)"
 else
-  echo "[3/3] ~/.paseo/config.json 이 없습니다 - Paseo 앱을 한 번 실행한 뒤 다시 돌리세요"
+  echo "[3/3] ~/.paseo/config.json 이 없습니다"
+  echo "      Paseo 앱을 한 번 실행한 뒤 이 스크립트를 다시 돌리세요 (1·2단계는 이미 끝났습니다)"
 fi
 
 cat <<'EOF'
