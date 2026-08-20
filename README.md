@@ -30,6 +30,7 @@ git clone https://github.com/Dr-Min/paseo-setup.git; cd paseo-setup
 | `rules/model-routing.md` | `~/.claude/rules/paseo-models.md`<br>`~/.codex/AGENTS.md` | **단일 원본.** 역할·선언승인·라우팅표·폴백·보안·비용 |
 | `paseo/append-system-prompt.txt` | `~/.paseo/config.json` 의 `daemon.appendSystemPrompt` | 프로바이더 불문 **모든 에이전트**에 주입되는 운영 철칙 7줄 |
 | `docs/PASEO-guide-ko.md` | (문서) | 파세오 한국어 실측 가이드 |
+| `eval/` | (설치 안 함) | 라우팅 규칙 검증용 채점기·과제·측정 기록 |
 
 라우팅 원본 하나를 양쪽 CLI에 뿌린다. `~/.claude/rules/`는 클로드만, `~/.codex/AGENTS.md`는
 코덱스만 읽기 때문에 둘 다 필요하다. 파세오가 띄운 코덱스 에이전트가 `~/.codex/AGENTS.md`를
